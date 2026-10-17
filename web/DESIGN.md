@@ -1,30 +1,34 @@
 # Tenure demo: design notes
 
-The page should feel like a **retention clerk's printout**: plain, ruled and numerical, and made for someone deciding who to call.
+The page is a **vintage telecom test console**. You set up a customer with hardware controls and read the churn risk off an analog meter. Lit lamps explain the reading.
 
 ## Tokens (defined at the top of `template.html`)
 
-- **Neutrals:** grey paper (`#f1f1ee`) and near-black ink, not cream. Dark mode uses the same scale inverted (`#141516` paper).
-- **Corners:** 0px everywhere. Nothing on the page is rounded.
+- **Panels:** warm beige instrument panels (`#d6d1c4`) on a darker bench, with bevelled edges and four screws each. The night panel is black anodised (`#1d1e21`).
+- **Controls:**
+  - Faders for numbers.
+  - Push keys with an indicator dot for choices.
+  - Lever switches for yes/no.
+  - Black memory buttons for presets.
 - **Type:**
-  - IBM Plex Sans Condensed for headings.
-  - IBM Plex Sans for body text.
-  - IBM Plex Mono for every figure.
+  - Barlow Condensed, uppercase and tracked, for engraved labels.
+  - Barlow for reading.
+  - Share Tech Mono for every digital readout.
+- **Colour means state:**
+  - Amber: the lit key or lever, readouts, and inputs pushing risk up.
+  - Green: inputs holding risk down.
+  - Red: the flag lamp and the meter's zone past the flag line.
 
-  Plex was picked because the data is IBM's.
-- **One accent:** safety rust (`#b8400c` light, `#f0773f` dark). It means risk and nothing else: the score when it's above the line, effects that push risk up, the flagged squares and the final row of the table. Effects that lower risk stay grey.
-- **One signature:** dot leaders between a label and its figure, the way a phone bill prints them. They're used in the summary and on the result slip. Don't add a second signature.
+  The glow on lamps and LEDs is how a lamp shows "on", so it appears only on lit indicators.
+- **The meter** is the centrepiece: a cream dial, a red needle and a red zone that moves with the flag line.
 
 ## Things to avoid
 
-- Card shadows.
-- Uppercase "eyebrow" labels.
-- Pill buttons.
-- Coloured status dots.
-- Coloured left-border strips.
-- A second accent colour.
-- Three-stat hero rows.
+- Glow on anything that isn't a lit indicator.
+- Gradients beyond the panel bevel.
+- Any real telecom company's branding.
+- Skeuomorphic textures beyond the brushed bevel and screws.
 
 ## Voice
 
-Plain sentences that say what the number means for the person making the call ("of the customers you call were really leaving"). Name the metric in brackets after the plain version. No hype and no em dashes.
+Bench-instrument plain: "Set up a customer. Watch the needle." Results say exactly what was measured.
