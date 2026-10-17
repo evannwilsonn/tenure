@@ -86,15 +86,15 @@ input[type=range]{flex:1;accent-color:var(--ink);min-width:0}
 .verdict.risk{background:var(--risk-wash);color:var(--risk)}
 .verdict.keep{background:var(--keep-wash);color:var(--keep)}
 .meter{position:relative;height:10px;margin:16px 0 4px;border-radius:2px;background:var(--rule2)}
-.meter .fill{position:absolute;inset:0 auto 0 0;background:var(--ink);opacity:.8;border-radius:2px;transition:width .35s cubic-bezier(.3,.7,.2,1)}
+.meter .fill{position:absolute;inset:0;background:var(--ink);opacity:.8;border-radius:2px;transform-origin:left;transition:transform .35s cubic-bezier(.3,.7,.2,1)}
 .meter .cut{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--risk);transition:left .2s}
 .scale{position:relative;height:18px;font:12px "IBM Plex Mono",monospace;color:var(--faint)}
 .scale span{position:absolute;top:0}
 .scale .r{right:0}
 .scale #cutLbl{color:var(--risk);transform:translateX(-50%);white-space:nowrap}
 .why{padding:16px 22px 20px}
-.why h3{font:500 14px "IBM Plex Sans";margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline}
-.why h3 small{font-weight:400;color:var(--faint);font-size:12px}
+.why h2{font:500 14px "IBM Plex Sans";margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+.why h2 small{font-weight:400;color:var(--faint);font-size:12px}
 .why ul{list-style:none;margin:0 0 14px;padding:0}
 .why li{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:10px;align-items:center;padding:6px 0;font-size:14px;border-bottom:1px solid var(--rule2)}
 .why li:last-child{border-bottom:0}
@@ -261,9 +261,9 @@ footer{border-top:1px solid var(--rule);padding:22px 0 40px;color:var(--soft);fo
         <div class="verdict" id="verdict"><i></i><span></span></div>
       </div>
       <div class="why">
-        <h3>Pushing it up <small>compared with an average customer</small></h3>
+        <h2>Pushing it up <small>compared with an average customer</small></h2>
         <ul class="up" id="up"></ul>
-        <h3>Holding it down</h3>
+        <h2>Holding it down</h2>
         <ul class="down" id="down"></ul>
       </div>
       <p class="fine">Total paid so far is taken as months × monthly bill. Bars show each input's effect on the log-odds, so they add up rather than multiply.</p>
@@ -383,7 +383,7 @@ function render(){
   const c = customer(); const {p, eff} = predict(c);
   $("prob").textContent = Math.round(p*100) + "%";
   $("prob").style.color = p >= threshold ? "var(--risk)" : "var(--ink)";
-  $("fill").style.width = (p*100).toFixed(1) + "%";
+  $("fill").style.transform = `scaleX(${p.toFixed(4)})`;
   $("cut").style.left = `calc(${(threshold*100).toFixed(1)}% - 1px)`;
   const cl = $("cutLbl"); cl.textContent = "line " + Math.round(threshold*100) + "%";
   cl.style.left = Math.min(80, Math.max(20, threshold*100)) + "%";
