@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tenure churn predictor</title>
+<meta name="description" content="A churn model for the IBM Telco data, built in C# with ML.NET. Change a customer and watch the risk move.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f4ee;--sheet:#fffdf8;--ink:#1c1f23;--soft:#5d636b;--faint:#6b7178;--rule:#ddd8cc;--rule2:#ebe7dd;
+  --risk:#c4432a;--risk-wash:#f7e4de;--keep:#2b6f62;--keep-wash:#dcece7;--field:#fff;--focus:#1f5fbf;
+  --shadow:0 1px 0 rgba(28,31,35,.04),0 8px 24px -12px rgba(28,31,35,.18);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#16181b;--sheet:#1e2125;--ink:#e9e6df;--soft:#a5abb2;--faint:#8f969e;--rule:#33373d;--rule2:#2a2e33;
+  --risk:#ef7a5f;--risk-wash:#3a2420;--keep:#6cc1ac;--keep-wash:#1d322d;--field:#24282d;--focus:#7fb0ff;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6);color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --paper:#16181b;--sheet:#1e2125;--ink:#e9e6df;--soft:#a5abb2;--faint:#8f969e;--rule:#33373d;--rule2:#2a2e33;
+  --risk:#ef7a5f;--risk-wash:#3a2420;--keep:#6cc1ac;--keep-wash:#1d322d;--field:#24282d;--focus:#7fb0ff;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6);color-scheme:dark;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.mono,.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+header.top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:22px 0 14px;border-bottom:1px solid var(--rule)}
+.brand{font:600 15px "IBM Plex Mono",monospace;letter-spacing:.02em}
+.brand span{color:var(--faint);font-weight:400}
+.toplinks{display:flex;gap:18px;font-size:14px;color:var(--soft);align-items:center}
+.theme{border:1px solid var(--rule);background:none;color:var(--soft);font:inherit;font-size:13px;padding:3px 10px;border-radius:999px;cursor:pointer}
+
+.intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:48px;padding:48px 0 36px;align-items:end}
+h1{font:600 clamp(34px,5vw,52px)/1.05 "IBM Plex Serif",Georgia,serif;letter-spacing:-.015em;margin:0}
+.lede{font-size:17px;color:var(--soft);margin:18px 0 0;max-width:34em}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink)}
+.facts div{padding:12px 12px 0 0}
+.facts b{display:block;font:500 26px/1.1 "IBM Plex Mono",monospace;letter-spacing:-.02em}
+.facts small{color:var(--soft);font-size:13px;line-height:1.35;display:block;margin-top:4px}
+
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start;padding-bottom:56px}
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;box-shadow:var(--shadow)}
+.form{padding:6px 24px 22px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:16px 0 14px;border-bottom:1px dashed var(--rule)}
+.presets>span{font-size:13px;color:var(--soft);margin-right:4px}
+.chip{border:1px solid var(--rule);background:var(--field);color:var(--ink);font:inherit;font-size:13px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--soft)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+fieldset{border:0;margin:0;padding:18px 0 4px;border-bottom:1px solid var(--rule2)}
+fieldset:last-of-type{border-bottom:0}
+legend{font:500 12px "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:0;margin-bottom:10px;float:left;width:100%}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;clear:both}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f.wide{grid-column:1/-1}
+.f>label,.f>.lbl{font-size:13px;color:var(--soft)}
+select,input[type=number]{appearance:none;-webkit-appearance:none;width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:8px 10px;min-height:40px}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--soft) 50%),linear-gradient(135deg,var(--soft) 50%,transparent 50%);background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--field)}
+.seg button{flex:1;border:0;background:none;color:var(--soft);font:inherit;font-size:14px;padding:8px 6px;cursor:pointer;min-height:38px}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.range{display:flex;align-items:center;gap:12px}
+.range output{font:500 15px "IBM Plex Mono",monospace;min-width:6.5em;text-align:right}
+input[type=range]{flex:1;accent-color:var(--ink);min-width:0}
+.addons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tick{display:flex;align-items:center;gap:8px;font-size:14px;border:1px solid var(--rule);background:var(--field);border-radius:4px;padding:8px 10px;cursor:pointer;min-height:40px}
+.tick input{accent-color:var(--ink);margin:0}
+.tick.off{opacity:.45;cursor:not-allowed}
+.hint{font-size:12.5px;color:var(--faint);margin:6px 0 0}
+
+.statement{position:sticky;top:20px}
+.stub{padding:20px 22px 18px;border-bottom:1px dashed var(--rule);position:relative}
+.k{font:500 12px "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0}
+.big{display:flex;align-items:baseline;gap:10px;margin:8px 0 2px}
+.big b{font:500 64px/1 "IBM Plex Mono",monospace;letter-spacing:-.04em;transition:color .3s}
+.big span{color:var(--soft);font-size:14px}
+.verdict{display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px;padding:4px 10px 4px 8px;border-radius:999px;margin-top:10px}
+.verdict i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.verdict.risk{background:var(--risk-wash);color:var(--risk)}
+.verdict.keep{background:var(--keep-wash);color:var(--keep)}
+.meter{position:relative;height:10px;margin:16px 0 4px;border-radius:2px;background:var(--rule2)}
+.meter .fill{position:absolute;inset:0 auto 0 0;background:var(--ink);opacity:.8;border-radius:2px;transition:width .35s cubic-bezier(.3,.7,.2,1)}
+.meter .cut{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--risk);transition:left .2s}
+.scale{position:relative;height:18px;font:12px "IBM Plex Mono",monospace;color:var(--faint)}
+.scale span{position:absolute;top:0}
+.scale .r{right:0}
+.scale #cutLbl{color:var(--risk);transform:translateX(-50%);white-space:nowrap}
+.why{padding:16px 22px 20px}
+.why h3{font:500 14px "IBM Plex Sans";margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+.why h3 small{font-weight:400;color:var(--faint);font-size:12px}
+.why ul{list-style:none;margin:0 0 14px;padding:0}
+.why li{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:10px;align-items:center;padding:6px 0;font-size:14px;border-bottom:1px solid var(--rule2)}
+.why li:last-child{border-bottom:0}
+.why li em{font-style:normal;color:var(--soft)}
+.bar{height:6px;border-radius:1px;justify-self:start;max-width:100%}
+.up .bar{background:var(--risk)}.down .bar{background:var(--keep)}
+.why .none{color:var(--faint);font-size:13px;display:block}
+.fine{font-size:12.5px;color:var(--faint);padding:0 22px 18px;margin:0}
+
+section.band{border-top:1px solid var(--rule);padding:44px 0}
+.band h2{font:600 28px/1.15 "IBM Plex Serif",Georgia,serif;margin:0 0 8px;letter-spacing:-.01em}
+.band .sub{color:var(--soft);margin:0 0 24px;max-width:44em}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+.tradeoff{padding:22px}
+.tradeoff .range output{min-width:3.5em}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.pair b{display:block;font:500 40px/1 "IBM Plex Mono",monospace;letter-spacing:-.03em}
+.pair p{margin:6px 0 0;font-size:14px;color:var(--soft)}
+.dots{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;margin-top:20px}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--rule)}
+.dots i.hit{background:var(--risk)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--soft);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.notes p{margin:0 0 14px}
+.notes p b{font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+th,td{text-align:right;padding:10px;border-bottom:1px solid var(--rule2)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+th{font:500 12px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--ink)}
+tr.final td{font-weight:600}
+tr.final td:first-child{box-shadow:inset 3px 0 0 var(--ink);padding-left:10px}
+td small{display:block;font-weight:400;color:var(--faint);font-size:12.5px;font-family:"IBM Plex Sans"}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+footer{border-top:1px solid var(--rule);padding:22px 0 40px;color:var(--soft);font-size:13.5px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .intro{grid-template-columns:1fr;gap:28px;padding-top:32px}
+  .desk{grid-template-columns:1fr}
+  .statement{position:static;order:-1}
+  .split{grid-template-columns:1fr;gap:28px}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .grid{grid-template-columns:1fr}
+  .addons{grid-template-columns:1fr 1fr}
+  .form{padding:4px 16px 18px}
+  .big b{font-size:52px}
+  .toplinks a.hide-sm{display:none}
+  .facts b{font-size:21px}
+  .dots{grid-template-columns:repeat(10,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">tenure <span>/ churn predictor</span></div>
+    <nav class="toplinks">
+      <a class="hide-sm" href="#numbers">The numbers</a>
+      <a href="https://github.com/evannwilsonn/tenure">GitHub</a>
+      <button class="theme" id="theme" type="button" aria-label="Switch colour theme">Dark</button>
+    </nav>
+  </header>
+
+  <section class="intro">
+    <div>
+      <h1>Which customers are about to cancel?</h1>
+      <p class="lede">A logistic regression trained on 5,634 customers of a phone and internet company, written in C# and checked against ML.NET. Pick a customer, change anything, and the risk and the reasons behind it update as you go.</p>
+    </div>
+    <div class="facts">
+      <div><b class="num" id="fF1">–</b><small>F1 on 1,409 held-out customers</small></div>
+      <div><b class="num" id="fRec">–</b><small>of leavers caught</small></div>
+      <div><b class="num" id="fBase">–</b><small>F1 of the one-line rule it beats</small></div>
+    </div>
+  </section>
+
+  <section class="desk">
+    <form class="sheet form" id="form" autocomplete="off" onsubmit="return false">
+      <div class="presets" role="group" aria-label="Example customers">
+        <span>Try:</span>
+        <button type="button" class="chip" data-preset="new">New fibre customer</button>
+        <button type="button" class="chip" data-preset="fence">On the fence</button>
+        <button type="button" class="chip" data-preset="settled">Settled family</button>
+      </div>
+
+      <fieldset>
+        <legend>Account</legend>
+        <div class="grid">
+          <div class="f wide">
+            <label for="tenure">Months as a customer</label>
+            <div class="range"><input type="range" id="tenure" min="0" max="72" step="1"><output id="tenureOut" class="num" for="tenure"></output></div>
+          </div>
+          <div class="f wide">
+            <span class="lbl" id="contractLbl">Contract</span>
+            <div class="seg" role="group" aria-labelledby="contractLbl" data-field="Contract">
+              <button type="button" data-v="Month-to-month">Month to month</button>
+              <button type="button" data-v="One year">One year</button>
+              <button type="button" data-v="Two year">Two year</button>
+            </div>
+          </div>
+          <div class="f">
+            <label for="MonthlyCharges">Monthly bill ($)</label>
+            <input type="number" id="MonthlyCharges" min="18" max="120" step="0.05" inputmode="decimal">
+          </div>
+          <div class="f">
+            <label for="PaymentMethod">Pays by</label>
+            <select id="PaymentMethod">
+              <option>Electronic check</option><option>Mailed check</option>
+              <option>Bank transfer (automatic)</option><option>Credit card (automatic)</option>
+            </select>
+          </div>
+          <div class="f">
+            <span class="lbl" id="paperLbl">Paperless billing</span>
+            <div class="seg" role="group" aria-labelledby="paperLbl" data-field="PaperlessBilling"><button type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Services</legend>
+        <div class="grid">
+          <div class="f">
+            <label for="InternetService">Internet</label>
+            <select id="InternetService"><option value="Fiber optic">Fibre optic</option><option value="DSL">DSL</option><option value="No">None</option></select>
+          </div>
+          <div class="f">
+            <label for="phone">Phone</label>
+            <select id="phone"><option value="1">One line</option><option value="2">Multiple lines</option><option value="0">No phone</option></select>
+          </div>
+          <div class="f wide">
+            <span class="lbl">Add-ons</span>
+            <div class="addons" id="addons">
+              <label class="tick"><input type="checkbox" data-addon="OnlineSecurity">Online security</label>
+              <label class="tick"><input type="checkbox" data-addon="OnlineBackup">Online backup</label>
+              <label class="tick"><input type="checkbox" data-addon="DeviceProtection">Device protection</label>
+              <label class="tick"><input type="checkbox" data-addon="TechSupport">Tech support</label>
+              <label class="tick"><input type="checkbox" data-addon="StreamingTV">Streaming TV</label>
+              <label class="tick"><input type="checkbox" data-addon="StreamingMovies">Streaming movies</label>
+            </div>
+            <p class="hint" id="addonHint" hidden>Add-ons need an internet plan.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Household</legend>
+        <div class="grid">
+          <div class="f"><span class="lbl" id="ptLbl">Has a partner</span><div class="seg" role="group" aria-labelledby="ptLbl" data-field="Partner"><button type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div></div>
+          <div class="f"><span class="lbl" id="dpLbl">Has dependents</span><div class="seg" role="group" aria-labelledby="dpLbl" data-field="Dependents"><button type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div></div>
+          <div class="f"><span class="lbl" id="srLbl">Senior citizen</span><div class="seg" role="group" aria-labelledby="srLbl" data-field="Senior"><button type="button" data-v="Yes">Yes</button><button type="button" data-v="No">No</button></div></div>
+          <div class="f"><span class="lbl" id="gLbl">Gender</span><div class="seg" role="group" aria-labelledby="gLbl" data-field="Gender"><button type="button" data-v="Female">Female</button><button type="button" data-v="Male">Male</button></div></div>
+        </div>
+      </fieldset>
+    </form>
+
+    <aside class="sheet statement" aria-live="polite">
+      <div class="stub">
+        <p class="k">Chance of leaving</p>
+        <div class="big"><b class="num" id="prob">–</b><span>this month</span></div>
+        <div class="meter" aria-hidden="true"><div class="fill" id="fill"></div><div class="cut" id="cut"></div></div>
+        <div class="scale"><span>0%</span><span id="cutLbl"></span><span class="r">100%</span></div>
+        <div class="verdict" id="verdict"><i></i><span></span></div>
+      </div>
+      <div class="why">
+        <h3>Pushing it up <small>compared with an average customer</small></h3>
+        <ul class="up" id="up"></ul>
+        <h3>Holding it down</h3>
+        <ul class="down" id="down"></ul>
+      </div>
+      <p class="fine">Total paid so far is taken as months × monthly bill. Bars show each input's effect on the log-odds, so they add up rather than multiply.</p>
+    </aside>
+  </section>
+</div>
+
+<section class="band" id="numbers">
+  <div class="wrap">
+    <h2>Where to draw the line</h2>
+    <p class="sub">The model gives a probability. Someone still has to decide how high is high enough to call the customer. Lower the line and you catch more leavers, but you also phone more people who were staying anyway. These figures come from the 1,409 test customers the model never saw.</p>
+    <div class="split">
+      <div class="sheet tradeoff">
+        <div class="f">
+          <label for="thr">Flag anyone above</label>
+          <div class="range"><input type="range" id="thr" min="5" max="95" step="1"><output id="thrOut" class="num" for="thr"></output></div>
+        </div>
+        <div class="pair">
+          <div><b class="num" id="prec">–</b><p>of flagged customers really leave <span class="mono">(precision)</span></p></div>
+          <div><b class="num" id="rec">–</b><p>of customers who leave get flagged <span class="mono">(recall)</span></p></div>
+        </div>
+        <div class="dots" id="dots" aria-hidden="true"></div>
+        <div class="legend"><span><i style="background:var(--risk)"></i>flagged and left</span><span><i style="background:var(--rule)"></i>flagged but stayed</span></div>
+        <p class="hint" id="thrNote"></p>
+      </div>
+      <div class="notes">
+        <p><b>Why not just use accuracy?</b> About 27% of customers leave, so a model that predicts "nobody leaves" is 73% accurate and useless. F1 balances precision and recall. That's why the line was set where cross-validated F1 peaked, not left at 50%.</p>
+        <p><b>What moved the score.</b> At a 50% line the model caught about half the leavers (F1 <span class="num" id="nPlain"></span>). Moving the line down to <span class="num" id="nT"></span> did most of the work. Weighting churners more heavily did something similar, but less well. Adding log-tenure, a count of add-ons and a "first six months" flag helped a little.</p>
+        <p><b>Trees didn't win.</b> ML.NET's gradient-boosted trees scored F1 <span class="num" id="nTree"></span> on the test set with their own tuned line, just under the logistic model. The logistic model is also the one whose reasons you can read straight off, so it's the one deployed.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap" style="margin-top:36px">
+      <table id="results">
+        <thead><tr><th>Test set, 1,409 customers</th><th>Line</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC AUC</th><th>Accuracy</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <footer>
+    <span>IBM Telco Customer Churn data · C# · ML.NET · ASP.NET minimal API</span>
+    <span>Evan Wilson · <a href="https://github.com/evannwilsonn/tenure">source and write-up</a></span>
+  </footer>
+</div>
+
+<script>
+const MODEL = {"intercept":-1.6465311733720085,"threshold":0.3062189400621707,"features":[{"name":"Tenure","column":"Tenure","mean":32.25115370962016,"sd":24.477916651625147,"coef":0.04632042244531849},{"name":"MonthlyCharges","column":"MonthlyCharges","mean":64.69289137380184,"sd":29.973325299416068,"coef":-0.28528505487691064},{"name":"TotalCharges","column":"TotalCharges","mean":2266.845305289318,"sd":2257.206902973892,"coef":-0.01627372992038464},{"name":"LogTenure","column":"LogTenure","mean":3.034066747343212,"sd":1.1539600938411185,"coef":-0.8733816165693028},{"name":"ServiceCount","column":"ServiceCount","mean":2.455981540646077,"sd":2.037443888853668,"coef":0.07043407268708032},{"name":"NewCustomer","column":"NewCustomer","mean":0.21104011359602415,"sd":0.40808300920173224,"coef":-0.028003482504214396},{"name":"Senior=Yes","column":"Senior","level":"Yes","mean":0.16169684061057862,"sd":0.36820515487131833,"coef":0.0800889956573546},{"name":"Gender=Male","column":"Gender","level":"Male","mean":0.5095846645367412,"sd":0.4999524969650107,"coef":-0.012692251065199294},{"name":"Partner=Yes","column":"Partner","level":"Yes","mean":0.4804756833510827,"sd":0.4996630011430258,"coef":-0.058036431623403995},{"name":"Dependents=Yes","column":"Dependents","level":"Yes","mean":0.3028044018459354,"sd":0.4595121044388454,"coef":0.0055876110497151904},{"name":"PhoneService=Yes","column":"PhoneService","level":"Yes","mean":0.902555910543131,"sd":0.2965878487275268,"coef":-0.050118091795556895},{"name":"MultipleLines=No phone service","column":"MultipleLines","level":"No phone service","mean":0.09744408945686901,"sd":0.2965878487275268,"coef":0.05011809179555737},{"name":"MultipleLines=Yes","column":"MultipleLines","level":"Yes","mean":0.4233226837060703,"sd":0.4941294635479084,"coef":0.19693041458976032},{"name":"InternetService=Fiber optic","column":"InternetService","level":"Fiber optic","mean":0.43734469293574724,"sd":0.49610280881303864,"coef":0.5716484935525568},{"name":"InternetService=No","column":"InternetService","level":"No","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"OnlineSecurity=No internet service","column":"OnlineSecurity","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"OnlineSecurity=Yes","column":"OnlineSecurity","level":"Yes","mean":0.284877529286475,"sd":0.4513961546801317,"coef":-0.12432285470938628},{"name":"OnlineBackup=No internet service","column":"OnlineBackup","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"OnlineBackup=Yes","column":"OnlineBackup","level":"Yes","mean":0.34132055378061765,"sd":0.4741948383658301,"coef":-0.09090313979418169},{"name":"DeviceProtection=No internet service","column":"DeviceProtection","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"DeviceProtection=Yes","column":"DeviceProtection","level":"Yes","mean":0.3470003549875754,"sd":0.47605812069538334,"coef":0.05822971508040278},{"name":"TechSupport=No internet service","column":"TechSupport","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"TechSupport=Yes","column":"TechSupport","level":"Yes","mean":0.2882499112531061,"sd":0.452988213249484,"coef":-0.10479965112689849},{"name":"StreamingTV=No internet service","column":"StreamingTV","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"StreamingTV=Yes","column":"StreamingTV","level":"Yes","mean":0.3846290379836706,"sd":0.48655067516611317,"coef":0.15669884629392866},{"name":"StreamingMovies=No internet service","column":"StreamingMovies","level":"No internet service","mean":0.2154774582889599,"sd":0.4111896561972589,"coef":-0.0635599625753609},{"name":"StreamingMovies=Yes","column":"StreamingMovies","level":"Yes","mean":0.3865814696485623,"sd":0.4870095837392604,"coef":0.18260699701314015},{"name":"Contract=One year","column":"Contract","level":"One year","mean":0.20873269435569755,"sd":0.4064390204406271,"coef":-0.26613455513360157},{"name":"Contract=Two year","column":"Contract","level":"Two year","mean":0.24245651402200924,"sd":0.4286069984751107,"coef":-0.7154622635173099},{"name":"PaperlessBilling=Yes","column":"PaperlessBilling","level":"Yes","mean":0.5903443379481718,"sd":0.49181381939298136,"coef":0.16339876022753683},{"name":"PaymentMethod=Credit card (automatic)","column":"PaymentMethod","level":"Credit card (automatic)","mean":0.21955981540646077,"sd":0.4139851717286525,"coef":-0.026239940288163753},{"name":"PaymentMethod=Electronic check","column":"PaymentMethod","level":"Electronic check","mean":0.3335108271210508,"sd":0.4715090835580819,"coef":0.15442157785843608},{"name":"PaymentMethod=Mailed check","column":"PaymentMethod","level":"Mailed check","mean":0.22932197373091942,"sd":0.42043403851920463,"coef":-0.08422539331854566}],"meta":{"dataset":"IBM Telco Customer Churn","trainRows":5634,"testRows":1409,"trainChurnRate":0.2654,"l2":1,"engineeredFeatures":true,"seed":2026,"note":"Coefficients are per standard deviation of each input. Threshold chosen by 5-fold CV F1 on the training set."}};
+const CURVE = [{"t":0.01,"p":0.2842,"r":1},{"t":0.02,"p":0.3095,"r":0.9973},{"t":0.03,"p":0.3316,"r":0.9973},{"t":0.04,"p":0.3452,"r":0.9866},{"t":0.05,"p":0.3616,"r":0.9813},{"t":0.06,"p":0.3745,"r":0.9733},{"t":0.07,"p":0.3837,"r":0.9706},{"t":0.08,"p":0.3926,"r":0.9679},{"t":0.09,"p":0.3998,"r":0.9599},{"t":0.1,"p":0.411,"r":0.9572},{"t":0.11,"p":0.4155,"r":0.9465},{"t":0.12,"p":0.4199,"r":0.9385},{"t":0.13,"p":0.4277,"r":0.9332},{"t":0.14,"p":0.4334,"r":0.9225},{"t":0.15,"p":0.4446,"r":0.9225},{"t":0.16,"p":0.4529,"r":0.9118},{"t":0.17,"p":0.4579,"r":0.9011},{"t":0.18,"p":0.4634,"r":0.8984},{"t":0.19,"p":0.4711,"r":0.893},{"t":0.2,"p":0.4783,"r":0.885},{"t":0.21,"p":0.4873,"r":0.8717},{"t":0.22,"p":0.4901,"r":0.861},{"t":0.23,"p":0.4938,"r":0.8529},{"t":0.24,"p":0.504,"r":0.8396},{"t":0.25,"p":0.509,"r":0.8316},{"t":0.26,"p":0.5126,"r":0.8182},{"t":0.27,"p":0.518,"r":0.8075},{"t":0.28,"p":0.5265,"r":0.7968},{"t":0.29,"p":0.5291,"r":0.7781},{"t":0.3,"p":0.5343,"r":0.7701},{"t":0.31,"p":0.543,"r":0.7594},{"t":0.32,"p":0.5564,"r":0.7513},{"t":0.33,"p":0.5714,"r":0.738},{"t":0.34,"p":0.5766,"r":0.7246},{"t":0.35,"p":0.585,"r":0.7086},{"t":0.36,"p":0.5932,"r":0.6979},{"t":0.37,"p":0.5977,"r":0.6872},{"t":0.38,"p":0.6033,"r":0.6791},{"t":0.39,"p":0.6158,"r":0.6684},{"t":0.4,"p":0.6225,"r":0.6658},{"t":0.41,"p":0.626,"r":0.6578},{"t":0.42,"p":0.6309,"r":0.6444},{"t":0.43,"p":0.6349,"r":0.623},{"t":0.44,"p":0.6343,"r":0.6123},{"t":0.45,"p":0.6364,"r":0.5989},{"t":0.46,"p":0.6387,"r":0.5909},{"t":0.47,"p":0.6505,"r":0.5722},{"t":0.48,"p":0.6603,"r":0.5561},{"t":0.49,"p":0.6689,"r":0.5401},{"t":0.5,"p":0.6735,"r":0.5294},{"t":0.51,"p":0.6831,"r":0.5187},{"t":0.52,"p":0.692,"r":0.5107},{"t":0.53,"p":0.6992,"r":0.4973},{"t":0.54,"p":0.698,"r":0.4759},{"t":0.55,"p":0.7,"r":0.4492},{"t":0.56,"p":0.7043,"r":0.4332},{"t":0.57,"p":0.7027,"r":0.4171},{"t":0.58,"p":0.7005,"r":0.4064},{"t":0.59,"p":0.7095,"r":0.3984},{"t":0.6,"p":0.7259,"r":0.3824},{"t":0.61,"p":0.7243,"r":0.3583},{"t":0.62,"p":0.7322,"r":0.3583},{"t":0.63,"p":0.7416,"r":0.3529},{"t":0.64,"p":0.7401,"r":0.3503},{"t":0.65,"p":0.7423,"r":0.3235},{"t":0.66,"p":0.7468,"r":0.3075},{"t":0.67,"p":0.7655,"r":0.2968},{"t":0.68,"p":0.7879,"r":0.2781},{"t":0.69,"p":0.8017,"r":0.2594},{"t":0.7,"p":0.8036,"r":0.2406},{"t":0.71,"p":0.8155,"r":0.2246},{"t":0.72,"p":0.8333,"r":0.2139},{"t":0.73,"p":0.8444,"r":0.2032},{"t":0.74,"p":0.8353,"r":0.1898},{"t":0.75,"p":0.8481,"r":0.1791},{"t":0.76,"p":0.8714,"r":0.1631},{"t":0.77,"p":0.8636,"r":0.1524},{"t":0.78,"p":0.8594,"r":0.1471},{"t":0.79,"p":0.8667,"r":0.139},{"t":0.8,"p":0.8431,"r":0.115},{"t":0.81,"p":0.8049,"r":0.0882},{"t":0.82,"p":0.7895,"r":0.0802},{"t":0.83,"p":0.8108,"r":0.0802},{"t":0.84,"p":0.8276,"r":0.0642},{"t":0.85,"p":0.8571,"r":0.0481},{"t":0.86,"p":0.875,"r":0.0374},{"t":0.87,"p":0.8462,"r":0.0294},{"t":0.88,"p":0.8182,"r":0.0241},{"t":0.89,"p":0.875,"r":0.0187},{"t":0.9,"p":1,"r":0.008},{"t":0.91,"p":1,"r":0.008},{"t":0.92,"p":1,"r":0.0027},{"t":0.93,"p":1,"r":0.0027},{"t":0.94,"p":1,"r":0},{"t":0.95,"p":1,"r":0},{"t":0.96,"p":1,"r":0},{"t":0.97,"p":1,"r":0},{"t":0.98,"p":1,"r":0},{"t":0.99,"p":1,"r":0}];
+const RESULTS = [{"name":"Majority class (nobody churns)","threshold":0.5,"precision":0,"recall":0,"f1":0,"rocAuc":0.5,"prAuc":0.2654,"logLoss":0.5787,"accuracy":0.7346,"truePos":0,"falsePos":0,"falseNeg":374,"trueNeg":1035},{"name":"Rule: month-to-month contract","threshold":0.5,"precision":0.4317,"recall":0.9037,"f1":0.5843,"rocAuc":0.7369,"prAuc":0.4157,"logLoss":9.4326,"accuracy":0.6586,"truePos":338,"falsePos":445,"falseNeg":36,"trueNeg":590},{"name":"Logistic regression, 0.5 threshold","threshold":0.5,"precision":0.6735,"recall":0.5294,"f1":0.5928,"rocAuc":0.8554,"prAuc":0.6695,"logLoss":0.4039,"accuracy":0.807,"truePos":198,"falsePos":96,"falseNeg":176,"trueNeg":939},{"name":"Gradient-boosted trees, tuned threshold","threshold":0.2868,"precision":0.5352,"recall":0.7513,"f1":0.6251,"rocAuc":0.8454,"prAuc":0.6417,"logLoss":0.4187,"accuracy":0.7608,"truePos":281,"falsePos":244,"falseNeg":93,"trueNeg":791},{"name":"Final: logistic, tuned threshold","threshold":0.3062,"precision":0.5427,"recall":0.7647,"f1":0.6349,"rocAuc":0.8554,"prAuc":0.6695,"logLoss":0.4039,"accuracy":0.7665,"truePos":286,"falsePos":241,"falseNeg":88,"trueNeg":794}];
+
+const ADDONS = ["OnlineSecurity","OnlineBackup","DeviceProtection","TechSupport","StreamingTV","StreamingMovies"];
+const LABELS = {
+  Tenure:"Months as a customer",Contract:"Contract",InternetService:"Internet",PaymentMethod:"Pays by",
+  MonthlyCharges:"Monthly bill",TotalCharges:"Total paid so far","Add-on services":"Add-ons",PaperlessBilling:"Paperless billing",
+  OnlineSecurity:"Online security",OnlineBackup:"Online backup",DeviceProtection:"Device protection",TechSupport:"Tech support",
+  StreamingTV:"Streaming TV",StreamingMovies:"Streaming movies",MultipleLines:"Multiple lines",PhoneService:"Phone",
+  Partner:"Partner",Dependents:"Dependents",Senior:"Senior citizen",Gender:"Gender"
+};
+const PRESETS = {
+  new:{Tenure:2,Contract:"Month-to-month",MonthlyCharges:85.5,PaymentMethod:"Electronic check",PaperlessBilling:"Yes",InternetService:"Fiber optic",phone:"1",addons:["StreamingTV"],Partner:"No",Dependents:"No",Senior:"No",Gender:"Female"},
+  fence:{Tenure:14,Contract:"Month-to-month",MonthlyCharges:59.9,PaymentMethod:"Credit card (automatic)",PaperlessBilling:"Yes",InternetService:"DSL",phone:"1",addons:["OnlineSecurity","TechSupport"],Partner:"Yes",Dependents:"No",Senior:"No",Gender:"Male"},
+  settled:{Tenure:58,Contract:"Two year",MonthlyCharges:89.1,PaymentMethod:"Bank transfer (automatic)",PaperlessBilling:"No",InternetService:"Fiber optic",phone:"2",addons:["OnlineSecurity","OnlineBackup","DeviceProtection","TechSupport"],Partner:"Yes",Dependents:"Yes",Senior:"No",Gender:"Female"}
+};
+
+const $ = id => document.getElementById(id);
+const state = {};
+let threshold = MODEL.threshold;
+
+// ---- the model, mirroring Predictor.cs ----
+function customer(){
+  const phone = state.phone, net = state.InternetService;
+  const c = {
+    Gender:state.Gender, Senior:state.Senior, Partner:state.Partner, Dependents:state.Dependents,
+    Tenure:state.Tenure, Contract:state.Contract, PaperlessBilling:state.PaperlessBilling, PaymentMethod:state.PaymentMethod,
+    MonthlyCharges:state.MonthlyCharges, InternetService:net,
+    PhoneService: phone==="0" ? "No" : "Yes",
+    MultipleLines: phone==="0" ? "No phone service" : phone==="2" ? "Yes" : "No"
+  };
+  for (const a of ADDONS) c[a] = net==="No" ? "No internet service" : (state.addons.includes(a) ? "Yes" : "No");
+  c.TotalCharges = c.Tenure * c.MonthlyCharges;
+  return c;
+}
+const serviceCount = c => ["MultipleLines",...ADDONS].filter(k => c[k]==="Yes").length;
+function raw(c, col, level){
+  if (level !== undefined && level !== null) return c[col]===level ? 1 : 0;
+  switch(col){
+    case "LogTenure": return Math.log(1 + c.Tenure);
+    case "ServiceCount": return serviceCount(c);
+    case "NewCustomer": return c.Tenure <= 6 ? 1 : 0;
+    default: return c[col];
+  }
+}
+const source = col => (col==="LogTenure"||col==="NewCustomer") ? "Tenure" : col==="ServiceCount" ? "Add-on services" : col;
+const sigmoid = z => z>=0 ? 1/(1+Math.exp(-z)) : Math.exp(z)/(1+Math.exp(z));
+function predict(c){
+  let z = MODEL.intercept; const eff = {};
+  for (const f of MODEL.features){
+    const e = f.coef * (raw(c, f.column, f.level) - f.mean) / f.sd;
+    z += e; const k = source(f.column); eff[k] = (eff[k]||0) + e;
+  }
+  return {p:sigmoid(z), eff};
+}
+function display(c, k){
+  if (k==="Tenure") return c.Tenure===1 ? "1 month" : c.Tenure+" months";
+  if (k==="MonthlyCharges") return "$"+c.MonthlyCharges.toFixed(2);
+  if (k==="TotalCharges") return "$"+Math.round(c.TotalCharges).toLocaleString("en-US");
+  if (k==="Add-on services") return serviceCount(c)+" of 7";
+  const v = c[k];
+  return ({"Fiber optic":"Fibre optic","No phone service":"No phone","No internet service":"No internet","Month-to-month":"Month to month"})[v] || v;
+}
+
+// ---- rendering ----
+function render(){
+  const c = customer(); const {p, eff} = predict(c);
+  $("prob").textContent = Math.round(p*100) + "%";
+  $("prob").style.color = p >= threshold ? "var(--risk)" : "var(--ink)";
+  $("fill").style.width = (p*100).toFixed(1) + "%";
+  $("cut").style.left = `calc(${(threshold*100).toFixed(1)}% - 1px)`;
+  const cl = $("cutLbl"); cl.textContent = "line " + Math.round(threshold*100) + "%";
+  cl.style.left = Math.min(80, Math.max(20, threshold*100)) + "%";
+  const v = $("verdict"), flagged = p >= threshold;
+  v.className = "verdict " + (flagged ? "risk" : "keep");
+  v.querySelector("span").textContent = flagged ? "Flag for the retention team" : "Not flagged";
+  const items = Object.entries(eff).map(([k,e]) => ({k,e}));
+  const max = Math.max(0.6, ...items.map(i => Math.abs(i.e)));
+  const list = (el, arr) => {
+    el.innerHTML = "";
+    if (!arr.length){ el.innerHTML = '<li><span class="none">Nothing notable</span></li>'; return; }
+    for (const i of arr){
+      const li = document.createElement("li");
+      const t = document.createElement("span");
+      t.textContent = (LABELS[i.k]||i.k) + " ";
+      const em = document.createElement("em"); em.textContent = "· " + display(c, i.k); t.append(em);
+      const b = document.createElement("span"); b.className = "bar";
+      b.style.width = Math.max(4, Math.abs(i.e)/max*90) + "px";
+      b.title = (i.e>0?"+":"") + i.e.toFixed(2) + " log-odds";
+      li.append(t, b); el.append(li);
+    }
+  };
+  list($("up"), items.filter(i => i.e > 0.05).sort((a,b) => b.e-a.e).slice(0,4));
+  list($("down"), items.filter(i => i.e < -0.05).sort((a,b) => a.e-b.e).slice(0,4));
+}
+
+function renderThreshold(){
+  const t = threshold;
+  $("thrOut").textContent = Math.round(t*100) + "%";
+  const pt = CURVE.reduce((best, q) => Math.abs(q.t - t) < Math.abs(best.t - t) ? q : best, CURVE[0]);
+  $("prec").textContent = Math.round(pt.p*100) + "%";
+  $("rec").textContent = Math.round(pt.r*100) + "%";
+  const dots = $("dots"); dots.innerHTML = "";
+  const hits = Math.round(pt.p*100);
+  for (let i=0;i<100;i++){ const d=document.createElement("i"); if(i<hits) d.className="hit"; dots.append(d); }
+  const tuned = Math.round(MODEL.threshold*100);
+  $("thrNote").textContent = Math.round(t*100)===tuned
+    ? `Each dot is one of 100 flagged customers. ${tuned}% is the line the model ships with.`
+    : `Each dot is one of 100 flagged customers. The model ships with the line at ${tuned}%.`;
+  render();
+}
+
+function syncControls(){
+  $("tenure").value = state.Tenure; $("tenureOut").textContent = state.Tenure===1 ? "1 month" : state.Tenure + " months";
+  if (document.activeElement !== $("MonthlyCharges")) $("MonthlyCharges").value = state.MonthlyCharges;
+  $("PaymentMethod").value = state.PaymentMethod;
+  $("InternetService").value = state.InternetService;
+  $("phone").value = state.phone;
+  document.querySelectorAll(".seg[data-field]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(state[g.dataset.field]===b.dataset.v))));
+  const noNet = state.InternetService==="No";
+  document.querySelectorAll("[data-addon]").forEach(cb => { cb.checked = !noNet && state.addons.includes(cb.dataset.addon); cb.disabled = noNet; cb.closest(".tick").classList.toggle("off", noNet); });
+  $("addonHint").hidden = !noNet;
+}
+
+function loadPreset(name){
+  Object.assign(state, JSON.parse(JSON.stringify(PRESETS[name])));
+  document.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.preset===name)));
+  syncControls(); render();
+}
+function touched(){ document.querySelectorAll("[data-preset]").forEach(b => b.setAttribute("aria-pressed","false")); syncControls(); render(); }
+
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => loadPreset(b.dataset.preset)));
+$("tenure").addEventListener("input", e => { state.Tenure = +e.target.value; touched(); });
+$("MonthlyCharges").addEventListener("input", e => { const v = parseFloat(e.target.value); if (!isNaN(v)){ state.MonthlyCharges = Math.min(120, Math.max(18, v)); touched(); } });
+$("MonthlyCharges").addEventListener("blur", e => { e.target.value = state.MonthlyCharges; });
+["PaymentMethod","InternetService","phone"].forEach(id => $(id).addEventListener("change", e => { state[id] = e.target.value; touched(); }));
+document.querySelectorAll(".seg[data-field]").forEach(g => g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state[g.dataset.field] = b.dataset.v; touched(); }));
+document.querySelectorAll("[data-addon]").forEach(cb => cb.addEventListener("change", () => { const a = cb.dataset.addon; state.addons = cb.checked ? [...new Set([...state.addons, a])] : state.addons.filter(x => x!==a); touched(); }));
+$("thr").addEventListener("input", e => { threshold = +e.target.value/100; renderThreshold(); });
+
+// results table, headline facts and notes, all from the training run
+(function(){
+  const tb = document.querySelector("#results tbody");
+  const rows = {
+    "Majority class (nobody churns)":["Majority class","Predicts that nobody leaves"],
+    "Rule: month-to-month contract":["Month-to-month rule","Flags every month-to-month customer"],
+    "Logistic regression, 0.5 threshold":["Logistic regression","Before any improvement"],
+    "Gradient-boosted trees, tuned threshold":["Boosted trees","ML.NET FastTree, tuned line"],
+    "Final: logistic, tuned threshold":["Final model","Tuned line + 3 engineered inputs"]
+  };
+  const f = (x, d=3) => x.toFixed(d);
+  for (const r of RESULTS){
+    const [name, note] = rows[r.name] || [r.name, ""];
+    const tr = document.createElement("tr"); if (r.name.startsWith("Final")) tr.className = "final";
+    tr.innerHTML = `<td>${name}<small>${note}</small></td><td class="num">${f(r.threshold,2)}</td><td class="num">${f(r.precision)}</td><td class="num">${f(r.recall)}</td><td class="num">${f(r.f1)}</td><td class="num">${f(r.rocAuc)}</td><td class="num">${f(r.accuracy)}</td>`;
+    tb.append(tr);
+  }
+  const get = s => RESULTS.find(r => r.name.startsWith(s));
+  const fin = get("Final"), rule = get("Rule"), plain = get("Logistic"), tree = get("Gradient");
+  $("fF1").textContent = f(fin.f1); $("fRec").textContent = Math.round(fin.recall*100) + "%"; $("fBase").textContent = f(rule.f1);
+  $("nPlain").textContent = f(plain.f1); $("nT").textContent = Math.round(MODEL.threshold*100) + "%"; $("nTree").textContent = f(tree.f1);
+})();
+
+// theme toggle (remembered per browser when storage is available)
+(function(){
+  const root = document.documentElement, btn = $("theme");
+  const mq = matchMedia("(prefers-color-scheme: dark)");
+  const dark = () => root.dataset.theme ? root.dataset.theme==="dark" : mq.matches;
+  const label = () => { btn.textContent = dark() ? "Light" : "Dark"; };
+  try { const s = localStorage.getItem("tenure-theme"); if (s) root.dataset.theme = s; } catch(e){}
+  label();
+  btn.addEventListener("click", () => { root.dataset.theme = dark() ? "light" : "dark"; try { localStorage.setItem("tenure-theme", root.dataset.theme); } catch(e){} label(); });
+  if (mq.addEventListener) mq.addEventListener("change", label);
+})();
+
+$("thr").value = Math.round(threshold*100);
+loadPreset("new");
+renderThreshold();
+</script>
+</body>
+</html>

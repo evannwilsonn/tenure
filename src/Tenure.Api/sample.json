@@ -1,0 +1,7 @@
+{
+  "gender": "Female", "seniorCitizen": false, "partner": "No", "dependents": "No",
+  "tenure": 2, "phoneService": "Yes", "multipleLines": "No", "internetService": "Fiber optic",
+  "onlineSecurity": "No", "onlineBackup": "No", "deviceProtection": "No", "techSupport": "No",
+  "streamingTV": "Yes", "streamingMovies": "No", "contract": "Month-to-month",
+  "paperlessBilling": "Yes", "paymentMethod": "Electronic check", "monthlyCharges": 85.5
+}

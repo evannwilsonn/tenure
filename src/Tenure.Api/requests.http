@@ -1,0 +1,14 @@
+### Health
+GET http://localhost:5102/health
+
+### A new month-to-month fibre customer paying by electronic check
+POST http://localhost:5102/predict
+Content-Type: application/json
+
+{
+  "gender": "Female", "seniorCitizen": false, "partner": "No", "dependents": "No",
+  "tenure": 2, "phoneService": "Yes", "multipleLines": "No", "internetService": "Fiber optic",
+  "onlineSecurity": "No", "onlineBackup": "No", "deviceProtection": "No", "techSupport": "No",
+  "streamingTV": "Yes", "streamingMovies": "No", "contract": "Month-to-month",
+  "paperlessBilling": "Yes", "paymentMethod": "Electronic check", "monthlyCharges": 85.5
+}
